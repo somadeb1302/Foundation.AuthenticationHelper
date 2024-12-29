@@ -1,0 +1,32 @@
+name: Foundation.AuthenticationHelper
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  BuildAndPack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Git: Checkout main with full history"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: "Install dotnet 8.0"
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Insert GitHub package token
+        run: sed -i 's/{github_access_token}/${{secrets.NUGET_API_KEY}}/' NuGet.config
+
+      - name: "pack and push"
+        env:
+          API_KEY: ${{ secrets.NUGET_API_KEY }}
+          API_SOURCE: https://nuget.pkg.github.com/somadeb1302/index.json
+          NUGET_VERSION: 0.0.1
+        run: |
+          dotnet build -c Release ./src/Foundation.AuthenticationHelper.sln
+          dotnet pack ./src/Foundation.AuthenticationHelper.csproj -p:PackageVersion=$NUGET_VERSION -o .
+          dotnet nuget push **/*$NUGET_VERSION*.nupkg -k $API_KEY -s $API_SOURCE --skip-duplicate
