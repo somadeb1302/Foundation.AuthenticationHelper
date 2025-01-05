@@ -46,8 +46,9 @@ public class TokenService: ITokenService
         return Convert.ToBase64String(randomNumber);
     }
 
-    public ClaimsPrincipal? ValidateToken(string token)
+    public ClaimsPrincipal? ValidateToken(string token, out bool isExpired)
     {
+        isExpired = false;
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.UTF8.GetBytes(_secretKey);
 
@@ -62,7 +63,17 @@ public class TokenService: ITokenService
 
         try
         {
-            var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
+            var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+            if (validatedToken is JwtSecurityToken jwtToken)
+            {
+                var expiration = jwtToken.ValidTo;
+                if (expiration < DateTime.UtcNow)
+                {
+                    isExpired = true;
+                    return null;
+                }
+            }
+
             return principal;
         }
         catch
